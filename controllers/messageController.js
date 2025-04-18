@@ -13,7 +13,13 @@ exports.sendMessage = async (req, res) => {
     try {
         // Check if users are friends
         const sender = await User.findById(senderId);
-        if (!sender.friends.includes(receiverId)) {
+        if (!sender) {
+            return res.status(404).json({ message: "Sender not found" });
+        }
+
+        // Convert friend IDs to strings for comparison
+        const friendIds = sender.friends.map(id => id.toString());
+        if (!friendIds.includes(receiverId)) {
             return res.status(403).json({ message: "You can only message your friends" });
         }
 
@@ -24,7 +30,16 @@ exports.sendMessage = async (req, res) => {
         });
 
         await message.save();
-        res.status(201).json({ message: "Message sent successfully", data: message });
+        
+        // Populate sender and receiver data before sending response
+        const populatedMessage = await Message.findById(message._id)
+            .populate('sender', 'name profilePicture')
+            .populate('receiver', 'name profilePicture');
+
+        res.status(201).json({ 
+            message: "Message sent successfully", 
+            data: populatedMessage 
+        });
     } catch (error) {
         console.error("Error sending message:", error);
         res.status(500).json({ message: "Error sending message" });
