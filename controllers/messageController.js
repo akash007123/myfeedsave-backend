@@ -75,6 +75,11 @@ exports.getConversations = async (req, res) => {
         // Group messages by conversation
         const conversations = {};
         messages.forEach(message => {
+            if (!message.sender || !message.receiver) {
+                console.warn('Message has missing sender or receiver data:', message._id);
+                return;
+            }
+
             const otherUserId = message.sender._id.toString() === userId 
                 ? message.receiver._id.toString() 
                 : message.sender._id.toString();
@@ -92,10 +97,14 @@ exports.getConversations = async (req, res) => {
         const unreadMessages = await Message.find({
             receiver: userId,
             read: false
-        });
+        }).populate('sender', '_id');
 
         unreadMessages.forEach(message => {
-            const senderId = message.sender.toString();
+            if (!message.sender) {
+                console.warn('Unread message has missing sender data:', message._id);
+                return;
+            }
+            const senderId = message.sender._id.toString();
             if (conversations[senderId]) {
                 conversations[senderId].unreadCount++;
             }
